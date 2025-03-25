@@ -141,7 +141,7 @@ cython_debug/
 
 # Virt
 .virt/
-**/.virt/**
+**/virt/**
 
 # chroma db
 **/chroma_db/**
