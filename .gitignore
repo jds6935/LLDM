@@ -139,5 +139,9 @@ cython_debug/
 .venv/
 **/venv/**
 
+# Virt
+.virt/
+**/.virt/**
+
 # chroma db
 **/chroma_db/**
