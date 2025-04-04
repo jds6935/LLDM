@@ -1,5 +1,5 @@
-from dndnetwork import DungeonMasterServer, PlayerClient
-from llm_utils import TemplateChat
+from util.dndnetwork import DungeonMasterServer, PlayerClient
+from util.llm_utils import TemplateChat
 
 
 class DungeonMaster:
@@ -15,6 +15,8 @@ class DungeonMaster:
     def dm_turn_hook(self):
         dm_message = ''
         # Do DM things here. You can use self.game_log to access the game log
+        
+
         if self.start:
             dm_message = self.chat.start_chat()
             self.start = False

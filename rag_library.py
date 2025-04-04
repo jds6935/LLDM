@@ -38,7 +38,7 @@ class RAG:
         chunk_size: int = 500,
         chunk_overlap: int = 50,
         embedding_model: str = "nomic-embed-text",
-        llm_model: str = "llama3.2:latest",
+        llm_model: str = None,
         instruction: str = "You are a helpful assistant.",
         collection_name: str = "default_collection",
         persistent: bool = False,
@@ -164,6 +164,8 @@ class RAG:
 
     def generate_response(self, query: str, contexts: List[str]) -> str:
         """Generate a response using the LLM model."""
+        if self.llm_model is None:
+            raise ValueError("LLM model not specified.")
         context_text = "\n\n".join(contexts)
         prompt = f"""{self.instruction}\n\nContext:\n{context_text}\n\nQuestion: {query}\n\nAnswer:"""
         response = ollama.generate(model=self.llm_model, prompt=prompt)
@@ -184,3 +186,8 @@ class RAG:
             print(f"Context {i}: {context[:200]}...")
         print("\nRESPONSE:")
         print(response)
+
+    def get_context(self, query: str) -> str:
+        """Get context for the given query."""
+        contexts = self.retrieve_context(query)
+        return "\n\n".join(contexts[:self.context_limit])

@@ -9,7 +9,7 @@ rag = RAG(
     chunk_size=750,            # Number of characters per chunk
     chunk_overlap=250,          # Overlapping characters between chunks
     embedding_model="nomic-embed-text",  # Embedding model for vector storage
-    llm_model="llama3.2:latest", # Language model for response generation
+    #llm_model="llama3.2:latest", # Language model for response generation
     instruction="You are an assistant that gives me very straight forward answers on DnD",  # LLM prompt style
     collection_name="my_rag_collection",  # ChromaDB collection name
     persistent=True,            # Whether to persist ChromaDB storage
@@ -59,7 +59,7 @@ def main():
     # Function to handle the query submission
     def submit_query():
         query = query_entry.get()
-        response = rag.run_query(query)
+        response = rag.get_context(query)
         response_text.delete(1.0, tkinter.END)
         response_text.insert(tkinter.END, response)
 
