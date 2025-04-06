@@ -87,19 +87,19 @@ class PlayerGUI:
         top_frame.grid_rowconfigure(0, weight=1)
         top_frame.grid_rowconfigure(1, weight=1)
 
-        # Game feed using Text widget instead of Entry for multiline
+        # Game feed using Text widget
         self.game_feed = ctk.CTkTextbox(top_frame, state="disabled")
-        self.game_feed.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, 10), pady=5)
+        self.game_feed.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=10, pady=10)
         
         # Text to speech toggle
         self.text2speech = ctk.BooleanVar()
         self.tts_toggle = ctk.CTkSwitch(top_frame, text="Text to Speech", variable=self.text2speech)
-        self.tts_toggle.grid(row=1, column=1, sticky="ne", padx=5, pady=5)
+        self.tts_toggle.grid(row=1, column=1, sticky="ne", padx=10, pady=10)
 
-        # Add connection status and connect button to top frame
+        # Connection button
         self.connect_button = ctk.CTkButton(top_frame, text="Connect", 
                                           command=self.connect_action)
-        self.connect_button.grid(row=0, column=1, sticky="ne", padx=5, pady=5)
+        self.connect_button.grid(row=0, column=1, sticky="ne", padx=10, pady=10)
 
         # ===== Bottom Frame: Input Text Box + Buttons =====
         bottom_frame = ctk.CTkFrame(self.root)
@@ -110,17 +110,19 @@ class PlayerGUI:
         bottom_frame.grid_rowconfigure(0, weight=1)
         bottom_frame.grid_rowconfigure(1, weight=0, minsize=55)
 
-        # Input text box - now spans both columns in row 0
+        # Input text box
         self.input_textbox = ctk.CTkEntry(bottom_frame)
-        self.input_textbox.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=5, pady=5)
+        self.input_textbox.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=10, pady=10)
 
-        # Send message button - now in first column of row 1
-        self.send_button = ctk.CTkButton(bottom_frame, text="Send", height=35, command=self.send_message_action)
-        self.send_button.grid(row=1, column=0, pady=(10, 0), padx=(5,5), sticky="nsew")
+        # Send message button
+        self.send_button = ctk.CTkButton(bottom_frame, text="Send", height=35, 
+                                        command=self.send_message_action)
+        self.send_button.grid(row=1, column=0, pady=10, padx=10, sticky="nsew")
 
-        # Record button - now in second column of row 1
-        self.record_button = ctk.CTkButton(bottom_frame, text="Record", height=35, command=self.toggle_button_action)
-        self.record_button.grid(row=1, column=1, pady=(10, 0), padx=5, sticky="nsew")
+        # Record button
+        self.record_button = ctk.CTkButton(bottom_frame, text="Record", height=35, 
+                                          command=self.toggle_button_action)
+        self.record_button.grid(row=1, column=1, pady=10, padx=10, sticky="nsew")
 
         # Initially disable controls until connected
         self.disable_controls()
