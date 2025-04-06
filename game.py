@@ -1,4 +1,4 @@
-from base import DungeonMaster
+from util.base import DungeonMaster
 
 dm = DungeonMaster()
 
