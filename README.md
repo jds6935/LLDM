@@ -42,7 +42,7 @@ pip install -r requirements.txt
 ### Starting the Game
 1. Launch the Dungeon Master server:
 ```bash
-python3 dm.py
+python3 game.py
 ```
 
 2. Launch player clients:
