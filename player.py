@@ -15,22 +15,25 @@ ctk.set_default_color_theme("blue")
 
 class PlayerGUI:
     def __init__(self, player_name="Player1"):
-        self.player = Player(player_name)
+        # Create game feed text area first so we have the update_game_feed method
+        self.setup_gui_components()
+        # Initialize Player with our log callback
+        self.player = Player(player_name, log_callback=self.process_message)
         self.recording = False
-        self.connected = True
-        self.setup_gui()
+        self.connected = False
+        self.whisper_model = None  # Will store the whisper model here
 
     def connect_action(self):
         try:
             self.player.connect()
             self.connected = True
-            self.update_game_feed("[System] Connected to server successfully!")
+            self.log_system_message("[System] Connected to server successfully!")
             self.connect_button.configure(text="Disconnect", command=self.disconnect_action)
             self.enable_controls()
         except ConnectionRefusedError:
-            self.update_game_feed("[Error] Could not connect to server. Is it running?")
+            self.log_system_message("[Error] Could not connect to server. Is it running?")
         except socket.error as e:
-            self.update_game_feed(f"[Error] Connection failed: {str(e)}")
+            self.log_system_message(f"[Error] Connection failed: {str(e)}")
 
     def disconnect_action(self):
         try:
@@ -40,7 +43,7 @@ class PlayerGUI:
         self.connected = False
         self.connect_button.configure(text="Connect", command=self.connect_action)
         self.disable_controls()
-        self.update_game_feed("[System] Disconnected from server")
+        self.log_system_message("[System] Disconnected from server")
 
     def enable_controls(self):
         self.input_textbox.configure(state="normal")
@@ -62,16 +65,40 @@ class PlayerGUI:
             try:
                 self.player.take_turn(message)
                 self.input_textbox.delete(0, 'end')
-                self.game_feed.insert('end', f"[You] -> {message}\n")
+                # Don't add to game feed as it will come back through the callback
             except socket.error as e:
-                self.update_game_feed(f"[Error] Failed to send message: {str(e)}")
+                self.log_system_message(f"[Error] Failed to send message: {str(e)}")
                 self.disconnect_action()
 
+    def process_message(self, message):
+        """Process and filter incoming messages"""
+        # Print all messages to console for debugging
+        print(f"Message received: {message}")
+        
+        # Filter out system messages from the game feed
+        if message.startswith("[SERVER]") or message.startswith("[System]") or message.startswith("[Error]"):
+            self.log_system_message(message)
+        elif message.startswith("[DM]") or message.startswith("---") or message.startswith("[") and "]" in message:
+            # This is game communication (DM or player message)
+            self.update_game_feed(message)
+    
+    def log_system_message(self, message):
+        """Log system messages to console only"""
+        print(message)
+        # If you want to display system messages somewhere else in the UI,
+        # you could add another text widget for system logs
+    
     def update_game_feed(self, message):
+        """Update the game feed with player/DM communication only"""
         self.game_feed.insert('end', message + '\n')
         self.game_feed.see('end')
 
     def setup_gui(self):
+        self.setup_gui_components()
+        # Initially disable controls until connected
+        self.disable_controls()
+        
+    def setup_gui_components(self):
         self.root = ctk.CTk()
         self.root.title("D&D Player Client")
         self.root.geometry("600x400")
@@ -91,7 +118,7 @@ class PlayerGUI:
         top_frame.grid_rowconfigure(1, weight=1)
 
         # Game feed using Text widget
-        self.game_feed = ctk.CTkTextbox(top_frame, state="disabled")
+        self.game_feed = ctk.CTkTextbox(top_frame)
         self.game_feed.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=10, pady=10)
         
         # Text to speech toggle
@@ -127,9 +154,6 @@ class PlayerGUI:
                                            command=self.toggle_recording)
         self.record_button.grid(row=1, column=1, pady=10, padx=10, sticky="nsew")
 
-        # Initially disable controls until connected
-        self.disable_controls()
-
     def toggle_recording(self):
         """Toggle recording on or off with multithreading."""
         self.recording = not self.recording
@@ -150,16 +174,16 @@ class PlayerGUI:
     def record_audio(self):
         """Continuously capture audio and process speech-to-text using OpenAI Whisper in a separate thread."""
         try:
-            # Load the model once (as a static attribute of the method)
-            if not hasattr(self.record_audio, "model"):
-                self.update_game_feed("[System] Loading Whisper model...")
-                model = whisper.load_model("base")
+            # Load the model once as an instance attribute
+            if self.whisper_model is None:
+                self.log_system_message("[System] Loading Whisper model...")
+                self.whisper_model = whisper.load_model("base")
                 
             while self.recording:
                 # Record audio
                 duration = 5  # seconds
                 fs = 16000  # sample rate
-                self.update_game_feed("[System] Recording audio...")
+                self.log_system_message("[System] Recording audio...")
                 recording = sd.rec(int(duration * fs), samplerate=fs, channels=1)
                 sd.wait()  # Wait until recording is finished
                 
@@ -167,19 +191,19 @@ class PlayerGUI:
                 audio_data = recording.flatten().astype(np.float32)
                 
                 # Transcribe
-                self.update_game_feed("[System] Transcribing audio...")
-                result = model.transcribe(audio_data)
+                self.log_system_message("[System] Transcribing audio...")
+                result = self.whisper_model.transcribe(audio_data)
                 transcribed_text = result["text"].strip()
                 
                 if transcribed_text:
                     # Insert the transcribed text into the input textbox
                     self.input_textbox.insert('end', transcribed_text)
-                    print(f"Transcribed: {transcribed_text}")
+                    self.log_system_message(f"[System] Transcribed: {transcribed_text}")
                 else:
-                    self.update_game_feed("[System] No speech detected")
+                    self.log_system_message("[System] No speech detected")
                 
         except Exception as e:
-            self.update_game_feed(f"[Error] Recording failed: {str(e)}")
+            self.log_system_message(f"[Error] Recording failed: {str(e)}")
             self.recording = False
             self.record_button.configure(text="Record")
 

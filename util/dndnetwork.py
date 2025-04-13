@@ -35,7 +35,8 @@ class DungeonMasterServer:
         self.turn_number = 1
 
         self.dm_hook = dm_hook
-        self.update_log = lambda msg: game_log.append(msg+'\n')
+        # Update to strip newlines from log messages for consistent display
+        self.update_log = lambda msg: game_log.append(msg.strip())
 
     def start_server(self):
         print(f"[LOG] Listening on {self.host}:{self.port}")
@@ -54,12 +55,12 @@ class DungeonMasterServer:
             client_sock, addr = self.server_socket.accept()
             name = client_sock.recv(1024).decode()
             self.clients[client_sock] = addr, name
-            self.broadcast(f"[LOG] New connection from {addr}. Welcome {name}!".encode())
+            self.broadcast(f"[SERVER] New connection from {addr}. Welcome {name}!".encode())
             # Notify them if the game started or not
             if self.game_started:
-                client_sock.sendall(b"[LOG] You are ready to join the game!\n")
+                client_sock.sendall(b"[SERVER] You are ready to join the game!\n")
             else:
-                client_sock.sendall(b"[LOG] You joined before the countdown ended!\n")
+                client_sock.sendall(b"[SERVER] You joined before the countdown ended!\n")
 
             # Each connected client is handled in its own thread
 
@@ -92,7 +93,7 @@ class DungeonMasterServer:
 
     def start_countdown(self):
         for i in range(self.countdown, 0, -1):
-            msg = f"[LOG] Countdown: {i} seconds left...\n".encode()
+            msg = f"[SERVER] Countdown: {i} seconds left...".encode()
             self.broadcast(msg)
             time.sleep(1)
         print("[LOG] Countdown ended.")
@@ -100,7 +101,7 @@ class DungeonMasterServer:
 
     def game_loop(self):
         print("[LOG] Game loop started! Each player must respond every turn.")
-        self.broadcast(b"Game has started!\n")
+        self.broadcast(b"[SERVER] Game has started!")
 
         while self.running:
             if not self.clients:
@@ -109,14 +110,18 @@ class DungeonMasterServer:
                 break
 
             # Broadcast that a new turn has started
-            turn_msg = f"\n[LOG] --- TURN {self.turn_number} STARTED ---\n".encode()
+            turn_msg = f"\n[SERVER] --- TURN {self.turn_number} STARTED ---".encode()
             self.broadcast(turn_msg)
-            self.broadcast('[LOG] DM is making decisions...\n'.encode())
+            self.broadcast('[SERVER] DM is making decisions...'.encode())
 
+            # Get DM's message for this turn
             dm_message = self.dm_hook()
-            self.broadcast(f'[DM] {dm_message}'.encode())
+            
+            # Format it nicely for the UI - [DM] prefix will be picked up by game feed filter
+            formatted_message = f'[DM] {dm_message}'
+            self.broadcast(formatted_message.encode())
 
-            self.broadcast(b"\n\nPlease enter your action (or '/quit' to leave)\n")
+            self.broadcast(b"\n[SERVER] Please enter your action (or '/quit' to leave)")
 
             # Wait for all players to respond
             client_threads = []
@@ -128,8 +133,8 @@ class DungeonMasterServer:
             for thread in client_threads:
                 thread.join()   
 
-            # Announce that the turn is complete
-            self.broadcast(f"--- TURN {self.turn_number} COMPLETE ---\n".encode())
+            # Announce that the turn is complete - use SERVER prefix to make it a system message
+            self.broadcast(f"[SERVER] --- TURN {self.turn_number} COMPLETE ---".encode())
             self.turn_number += 1
             time.sleep(1)  # Just a short pause before next turn
 
@@ -140,15 +145,17 @@ class DungeonMasterServer:
         """Record the player's action, broadcast it, and signal that they've responded."""
         if client_sock not in self.clients:
             return
-        addr, name  = self.clients[client_sock]
+        addr, name = self.clients[client_sock]
 
-        out_msg = f"[{name}] -> {msg}\n".encode()
+        # No [SERVER] prefix for player messages - these should go in the game feed
+        out_msg = f"[{name}] {msg}".encode()
         self.broadcast(out_msg)
 
     def broadcast(self, message: bytes):
         """Send a message to all connected players."""
-        print(f"[LOG] Broadcasting: {message.decode().strip()}")
-        self.update_log(message.decode().strip())
+        decoded_msg = message.decode().strip()
+        print(f"[LOG] Broadcasting: {decoded_msg}")
+        self.update_log(decoded_msg)
         for client_sock in list(self.clients.keys()):
             try:
                 client_sock.sendall(message)
@@ -162,11 +169,12 @@ import socket
 import threading
 
 class PlayerClient:
-    def __init__(self, name, host="127.0.0.1", port=5555):
+    def __init__(self, name, host="127.0.0.1", port=5555, log_callback=None):
         self.host = host
         self.port = port
         self._name = name
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.log_callback = log_callback or (lambda msg: print(msg.strip()))
 
     @property
     def name(self):
@@ -183,9 +191,14 @@ class PlayerClient:
                 data = self.sock.recv(1024)
                 if not data:
                     break
-                print(data.decode().strip())
+                message = data.decode().strip()
+                # Send the message to the GUI if callback exists
+                self.log_callback(message)
             except ConnectionResetError:
-                print(f"[LOG] Connection closed by server.")
+                self.log_callback("[LOG] Connection closed by server.")
+                break
+            except Exception as e:
+                self.log_callback(f"[ERROR] Receive error: {str(e)}")
                 break
 
     def send_message(self, msg: str):
@@ -194,5 +207,9 @@ class PlayerClient:
 
     def unjoin(self):
         """Send '/quit' to gracefully exit."""
-        self.send_message("/quit")
-        self.sock.close()
+        try:
+            self.send_message("/quit")
+            self.sock.close()
+        except:
+            # Handle case where socket is already closed
+            pass

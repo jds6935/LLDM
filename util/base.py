@@ -1,36 +1,90 @@
 from util.dndnetwork import DungeonMasterServer, PlayerClient
 from util.llm_utils import TemplateChat
+from util.function_processor import process_function_calls
+from rag_library import RAG
 
 
 class DungeonMaster:
     def __init__(self):
         self.game_log = ['START']
         self.server = DungeonMasterServer(self.game_log, self.dm_turn_hook)
-        self.chat = TemplateChat.from_file('util/templates/dm_chat.json', sign='hello')
+        
+        # Initialize RAG system
+        self.rag = RAG(
+            data_dir="rag-documents",  # Directory containing text files
+            file_extension="txt",      # File type to process
+            chunk_size=750,            # Number of characters per chunk
+            chunk_overlap=250,          # Overlapping characters between chunks
+            embedding_model="nomic-embed-text",  # Embedding model for vector storage
+            #llm_model="llama3.2:latest", # Language model for response generation
+            instruction="You are an assistant that gives me very straight forward answers on DnD",  # LLM prompt style
+            collection_name="my_rag_collection",  # ChromaDB collection name
+            persistent=True,            # Whether to persist ChromaDB storage
+            db_path="./chroma_db",      # Path for persistent storage
+            context_limit=300,          # Max characters to display in context
+            n_results=12                # Number of relevant documents to retrieve
+        )
+        self.rag.start()
+
+        # Update search_rules function to use RAG
+        def get_context(query: str) -> str:
+            return self.rag.get_context(query)
+
+        self.chat = TemplateChat.from_file(
+            'util/templates/dm_chat.json',
+            sign='hello',
+            function_call_processor=process_function_calls
+        )
         self.start = True
+        self.summary = []  # Store summaries of game events
+        self.player_stats = {}  # Store player character sheets
 
     def start_server(self):
         self.server.start_server()
 
     def dm_turn_hook(self):
-        dm_message = ''
-        # Do DM things here. You can use self.game_log to access the game log
+        # 1. Agent makes RAG tool call for additional context
+        rag_context = ""
+        if not self.start:
+            # Extract important questions from game log to ask RAG
+            last_messages = "\n".join(self.game_log[-5:])  # Get last 5 messages
+            try:
+                # Ask RAG system about relevant game rules or context
+                rag_context = self.rag.get_context(f"Based on this game context, what DnD rules or information should I know: {last_messages}")
+            except Exception as e:
+                print(f"RAG error: {e}")
         
-
+        # 2. Agent output, giving scenario to players and asking for their actions
+        dm_message = ''
+        
         if self.start:
+            # Initial game setup
             dm_message = self.chat.start_chat()
             self.start = False
-        else: 
-            dm_message = self.chat.send('\n'.join(self.game_log))
-
+        else:
+            # Process player actions, include RAG context
+            game_context = '\n'.join(self.game_log) + f"\n\nRelevant DnD context: {rag_context}"
+            dm_message = self.chat.send(game_context)
+            
+            # 5. Summarize what happened to keep context short
+            if len(self.game_log) > 20:  # After 20 messages, start summarizing
+                # Create a summary of recent events (excluding RAG calls)
+                recent_events = "\n".join(self.game_log[-10:])  # Last 10 interactions
+                # In a real implementation, you might want to use an LLM to generate this summary
+                summary = f"Game summary at turn {len(self.game_log)}: {recent_events[:100]}..."
+                self.summary.append(summary)
+                # Trim the game log to keep context manageable
+                self.game_log = self.game_log[:5] + ["...SUMMARY..."] + self.summary[-1:] + self.game_log[-5:]
+                
         # Return a message to send to the players for this turn
         return dm_message 
 
 
 class Player:
-    def __init__(self, name):
+    def __init__(self, name, log_callback=None):
         self.name = name
-        self.client = PlayerClient(self.name)
+        self.client = PlayerClient(self.name, log_callback=log_callback)
+        self.character_sheet = {}  # Store player character sheet
 
     def connect(self):
         self.client.connect()
@@ -39,4 +93,6 @@ class Player:
         self.client.unjoin()
 
     def take_turn(self, message):
-        self.client.send_message(message)
+        # 3. Players give actions, attaching player card to message
+        message_with_character = f"{message}\n\nCHARACTER: {self.character_sheet}"
+        self.client.send_message(message_with_character)
