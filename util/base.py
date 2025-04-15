@@ -51,6 +51,7 @@ class DungeonMaster:
             try:
                 # Ask RAG system about relevant game rules or context
                 rag_context = self.rag.get_context(f"Based on this game context, what DnD rules or information should I know: {last_messages}")
+                print(f"[DEBUG] RAG context: {rag_context}")  # Debugging log
             except Exception as e:
                 print(f"RAG error: {e}")
         
@@ -60,22 +61,30 @@ class DungeonMaster:
         if self.start:
             # Initial game setup
             dm_message = self.chat.start_chat()
+            print(f"[DEBUG] Initial DM message: {dm_message}")  # Debugging log
             self.start = False
         else:
             # Process player actions, include RAG context
             game_context = '\n'.join(self.game_log) + f"\n\nRelevant DnD context: {rag_context}"
+            print(f"[DEBUG] Game context: {game_context}")  # Debugging log
             dm_message = self.chat.send(game_context)
+            print(f"[DEBUG] DM message after processing: {dm_message}")  # Debugging log
             
             # 5. Summarize what happened to keep context short
             if len(self.game_log) > 20:  # After 20 messages, start summarizing
                 # Create a summary of recent events (excluding RAG calls)
                 recent_events = "\n".join(self.game_log[-10:])  # Last 10 interactions
-                # In a real implementation, you might want to use an LLM to generate this summary
                 summary = f"Game summary at turn {len(self.game_log)}: {recent_events[:100]}..."
                 self.summary.append(summary)
                 # Trim the game log to keep context manageable
                 self.game_log = self.game_log[:5] + ["...SUMMARY..."] + self.summary[-1:] + self.game_log[-5:]
-                
+        
+        # Add DM message to the game log
+        self.game_log.append(f"[DM] {dm_message}")
+        
+        # Broadcast the DM message to all players
+        self.server.broadcast(f"[DM] {dm_message}".encode())
+
         # Return a message to send to the players for this turn
         return dm_message 
 
