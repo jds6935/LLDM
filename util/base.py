@@ -93,7 +93,39 @@ class Player:
     def __init__(self, name, log_callback=None):
         self.name = name
         self.client = PlayerClient(self.name, log_callback=log_callback)
-        self.character_sheet = {}  # Store player character sheet
+        self.character_sheet = {
+            "name": name,
+            "race": "Half-Elf",
+            "class": "Ranger",
+            "level": 3,
+            "background": "Outlander",
+            "alignment": "Chaotic Good",
+            "abilities": {
+                "strength": 12,
+                "dexterity": 16, 
+                "constitution": 14,
+                "intelligence": 10,
+                "wisdom": 14,
+                "charisma": 14
+            },
+            "skills": {
+                "nature": True,
+                "survival": True,
+                "stealth": True,
+                "perception": True
+            },
+            "hp": {
+                "max": 27,
+                "current": 27
+            },
+            "armor_class": 15,
+            "equipment": [
+                "Leather Armor",
+                "Longbow",
+                "Two Shortswords",
+                "Explorer's Pack"
+            ]
+        }  # Example character sheet
 
     def connect(self):
         self.client.connect()
