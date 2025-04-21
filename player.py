@@ -8,6 +8,7 @@ import tempfile  # To save temporary audio files
 import os  # To manage temporary files
 import threading  # To handle recording in a separate thread
 import time  # For simulating button hold duration
+import pyttsx3  # For text-to-speech functionality
 
 # Initialize the main app
 ctk.set_appearance_mode("System")  # Can be "Light", "Dark", or "System"
@@ -17,6 +18,9 @@ class PlayerGUI:
     def __init__(self, player_name="Player1"):
         # Create game feed text area first so we have the update_game_feed method
         self.setup_gui_components()
+        # Initialize TTS engine before using it
+        self.tts_engine = pyttsx3.init()
+        self.initialize_tts()  # Configure TTS engine
         # Initialize Player with our log callback
         self.player = Player(player_name, log_callback=self.process_message)
         self.recording = False
@@ -92,6 +96,9 @@ class PlayerGUI:
         """Update the game feed with player/DM communication only"""
         self.game_feed.insert('end', message + '\n')
         self.game_feed.see('end')
+        if self.tts_toggle.get():
+            # Speak the message if TTS is enabled
+            self.speak(message)
 
     def setup_gui(self):
         self.setup_gui_components()
@@ -214,6 +221,20 @@ class PlayerGUI:
         finally:
             if self.connected:
                 self.disconnect_action()
+
+    # Initialize TTS engine
+    def initialize_tts(self):
+        # Optional: customize voice settings
+        self.tts_engine.setProperty('rate', 150)  # Speed of speech
+        voices = self.tts_engine.getProperty('voices')
+        # Choose a voice - typically voice[0] is male, voice[1] is female
+        self.tts_engine.setProperty('voice', voices[0].id)
+        # No need to return anything as we're modifying self.tts_engine directly
+
+    # Text-to-Speech function
+    def speak(self, text):
+        self.tts_engine.say(text)
+        self.tts_engine.runAndWait()
 
 def main():
     app = PlayerGUI()

@@ -33,7 +33,7 @@ class RAG:
     
     def __init__(
         self,
-        data_dir: str = "data",
+        data_dir: str = "rag-documents",
         file_extension: str = "txt",
         chunk_size: int = 500,
         chunk_overlap: int = 50,
@@ -122,8 +122,15 @@ class RAG:
         """Load documents from the specified directory."""
         documents = {}
         for file_path in glob.glob(os.path.join(self.data_dir, f"*.{self.file_extension}")):
-            with open(file_path, "r") as file:
-                documents[os.path.basename(file_path)] = file.read()
+            try:
+                with open(file_path, "r", encoding="utf-8") as file:
+                    documents[os.path.basename(file_path)] = file.read()
+            except UnicodeDecodeError as e:
+                print(f"Warning: Could not read file {file_path} due to encoding issues: {e}")
+                continue
+            except Exception as e:
+                print(f"Error reading file {file_path}: {e}")
+                continue
         return documents
 
     def chunk_documents(self, documents: Dict[str, str]) -> List[Dict[str, Any]]:
