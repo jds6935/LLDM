@@ -79,13 +79,11 @@ class DungeonMaster:
                 # Trim the game log to keep context manageable
                 self.game_log = self.game_log[:5] + ["...SUMMARY..."] + self.summary[-1:] + self.game_log[-5:]
         
-        # Add DM message to the game log
-        self.game_log.append(f"[DM] {dm_message}")
+        # Add DM message to the game log only
+        message_to_send = f"[DM] {dm_message}"
+        self.game_log.append(message_to_send)
         
-        # Broadcast the DM message to all players
-        self.server.broadcast(f"[DM] {dm_message}".encode())
-
-        # Return a message to send to the players for this turn
+        # Just return the message, let the server handle broadcasting
         return dm_message 
 
 

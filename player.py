@@ -79,10 +79,11 @@ class PlayerGUI:
         # Print all messages to console for debugging
         print(f"Message received: {message}")
         
-        # Filter out system messages from the game feed
+        # Only display messages that come from the network, not local game_log
         if message.startswith("[SERVER]") or message.startswith("[System]") or message.startswith("[Error]"):
             self.log_system_message(message)
-        elif message.startswith("[DM]") or message.startswith("---") or message.startswith("[") and "]" in message:
+        elif (message.startswith("[DM]") or message.startswith("---") or 
+              (message.startswith("[") and "]" in message)) and not message.startswith("[local]"):
             # This is game communication (DM or player message)
             self.update_game_feed(message)
     
