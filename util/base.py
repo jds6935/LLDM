@@ -65,7 +65,11 @@ class DungeonMaster:
             self.start = False
         else:
             # Process player actions, include RAG context
-            game_context = '\n'.join(self.game_log) + f"\n\nRelevant DnD context: {rag_context}"
+            if rag_context:  # Only add RAG message if there is context
+                rag_message = f"[RAG] {rag_context}"
+                self.game_log.append(rag_message)
+                
+            game_context = '\n'.join(self.game_log)
             print(f"[DEBUG] Game context: {game_context}")  # Debugging log
             dm_message = self.chat.send(game_context)
             print(f"[DEBUG] DM message after processing: {dm_message}")  # Debugging log
