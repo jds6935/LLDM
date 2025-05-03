@@ -7,24 +7,95 @@
     "frequency_penalty": 0.3
   },
   "messages": [
-      { "role": "system", "content": "You are a DnD Dungeon Master. Guide players through an interactive adventure with rich descriptions and engaging scenarios. You have two main tools at your disposal:\n\n1. RAG Context: Use the search_rules function to look up D&D rules, lore, monsters, and items.\n2. RNG: Use the roll_dice function for random dice rolls when players make checks, attacks, or other actions requiring randomness.\n\nFollow this game loop:\n1. Ask questions to get relevant game context using search_rules\n2. Present scenarios and ask for player actions\n3. Process player actions\n4. Use roll_dice for random outcomes\n5. Summarize what has happened so far\n\nKeep the game coherent, interesting, and fair. Adapt to player choices and make them feel like they're in control of their adventure. DO NOT ACKNOWLEDGE MESSAGES THAT BEGIN WITH [RAG], THESE ARE GIVEN TO YOU TO GAVE BETTER CONTEXT OF THE DND GAME. Only guide the players along their journey" },
-      {"role": "assistant", "content": ""}
-      
+    {
+      "role": "system",
+      "content": "You are a DnD Dungeon Master. Guide players through an interactive adventure with rich descriptions and engaging scenarios. You have two main tools at your disposal:\n\n1. RNG: Use the roll_dice function for random dice rolls when players make checks, attacks, or other actions requiring randomness.\n\nFollow this game loop:\n1. Present scenarios and ask for player actions\n2. Process player actions using appropriate rules\n3. Use roll_dice for random outcomes\n4. Summarize what has happened so far\n\nKeep the game coherent, interesting, and fair. Adapt to player choices and make them feel like they're in control of their adventure. DO NOT ACKNOWLEDGE MESSAGES THAT BEGIN WITH [RAG], THESE ARE GIVEN TO YOU TO GIVE BETTER CONTEXT OF THE DND GAME. Only guide the players along their journey."
+    },
+    {
+      "role": "user",
+      "content": "[RAG] Giant Rat: Medium beast, AC 12, HP 7, Bite attack does 1d4+2 damage"
+    },
+    {
+      "role": "assistant",
+      "content": "As you enter the dimly lit cellar, you hear scratching sounds. In the corner, you spot a creature about the size of a small dog, but far more menacing - its red eyes gleam in the darkness and its sharp teeth glint as it snarls at your approach. What would you like to do?"
+    },
+    {
+      "role": "user",
+      "content": "I attack with my sword!"
+    },
+    {
+      "role": "assistant",
+      "content": "Let's roll for that attack! I'll need to check if you hit its AC of 12.\n[Using roll_dice with d20...]\nDescribe your character's combat style and I'll narrate the outcome based on the roll."
+    },
+    {
+      "role": "user",
+      "content": "Ok lets start a new DnD game."
+    },
+    {
+      "role": "assistant", 
+      "content": ""
+    }
   ],
   "tools": [
-    {
-      "name": "search_rules",
-      "description": "Search D&D rules and lore to retrieve relevant information",
-      "parameters": {
-        "query": "The search query for rules lookup"
-      }
-    },
     {
       "name": "roll_dice",
       "description": "Roll dice with the specified number of sides",
       "parameters": {
-        "sides": "Number of sides on the dice (e.g., 20 for d20)",
-        "number": "Number of dice to roll (default: 1)"
+        "type": "object",
+        "properties": {
+          "sides": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "description": "Number of sides on the dice"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "d20": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10,
+                    "description": "Number of d20 dice to roll"
+                  },
+                  "d12": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10,
+                    "description": "Number of d12 dice to roll"
+                  },
+                  "d10": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10,
+                    "description": "Number of d10 dice to roll"
+                  },
+                  "d8": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10,
+                    "description": "Number of d8 dice to roll"
+                  },
+                  "d6": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10,
+                    "description": "Number of d6 dice to roll"
+                  },
+                  "d4": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10,
+                    "description": "Number of d4 dice to roll"
+                  }
+                },
+                "additionalProperties": false
+              }
+            ],
+            "description": "Number of sides on the dice or dice notation (e.g., {'d20': 1} for one d20)"
+          }
+        },
+        "required": ["sides"]
       }
     }
   ]
