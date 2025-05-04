@@ -188,11 +188,11 @@ class PlayerClient:
     def receive_messages(self):
         while True:
             try:
-                data = self.sock.recv(1024)
+                # Increase buffer size to 4096 or 8192
+                data = self.sock.recv(8192)  
                 if not data:
                     break
                 message = data.decode().strip()
-                # Send the message to the GUI if callback exists
                 self.log_callback(message)
             except ConnectionResetError:
                 self.log_callback("[LOG] Connection closed by server.")

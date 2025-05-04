@@ -16,13 +16,13 @@ class DungeonMaster:
             chunk_size=750,            # Number of characters per chunk
             chunk_overlap=250,          # Overlapping characters between chunks
             embedding_model="nomic-embed-text",  # Embedding model for vector storage
-            #llm_model="llama3.2:latest", # Language model for response generation
-            instruction="You are an assistant that gives me very straight forward answers on DnD",  # LLM prompt style
+            llm_model="llama3.2:latest", # Language model for response generation
+            instruction="Based on the input give me any information that the DM should know to make better and more accurate story telling.",  # LLM prompt style
             collection_name="my_rag_collection",  # ChromaDB collection name
             persistent=True,            # Whether to persist ChromaDB storage
             db_path="./chroma_db",      # Path for persistent storage
-            context_limit=300,          # Max characters to display in context
-            n_results=12                # Number of relevant documents to retrieve
+            context_limit=200,          # Max characters to display in context
+            n_results=4                 # Number of relevant documents to retrieve
         )
         self.rag.start()
 
@@ -44,89 +44,63 @@ class DungeonMaster:
         self.server.start_server()
 
     def dm_turn_hook(self):
-        # 1. Agent makes RAG tool call for additional context
-        if not self.start:
-            # Extract important questions from game log to ask RAG
-            last_messages = "\n".join(self.game_log[-5:])  # Get last 5 messages
-            try:
-                # Ask RAG system about relevant game rules or context
-                self.dm_secret_knowledge = self.rag.get_context(
-                    f"Based on this game context, what DnD rules or information should I know: {last_messages}"
-                )
-                print(f"[DEBUG] RAG context (DM secret knowledge): {self.dm_secret_knowledge}")  # Debugging log
-            except Exception as e:
-                print(f"RAG error: {e}")
-                self.dm_secret_knowledge = ""  # Clear secret knowledge on error
-        
-        # 2. Agent output, giving scenario to players and asking for their actions
-        dm_message = ''
-        
-        if self.start:
-            # Initial game setup
-            dm_message = self.chat.start_chat()
-            print(f"[DEBUG] Initial DM message: {dm_message}")  # Debugging log
-            self.start = False
-        else:
-            # Process player actions, exclude RAG context from game log
-            game_context = '\n'.join(self.game_log)
-            print(f"[DEBUG] Game context: {game_context}")  # Debugging log
-            dm_message = self.chat.send(game_context)
-            print(f"[DEBUG] DM message after processing: {dm_message}")  # Debugging log
+        print("[DEBUG] Starting DM turn...")
+        try:
+            # 1. Agent makes RAG tool call for additional context
+            rag_context = ""
+            if not self.start:
+                # Extract important questions from game log to ask RAG
+                last_messages = "\n".join(self.game_log[-5:])  # Get last 5 messages
+                try:
+                    # Ask RAG system about relevant game rules or context
+                    rag_context = self.rag.run_query(f"Based on this game context, what DnD rules or information should I know: {last_messages}")
+                    print(f"[DEBUG] RAG context: {rag_context}")  # Debugging log
+                except Exception as e:
+                    print(f"RAG error: {e}")
             
-            # 5. Summarize what happened to keep context short
-            if len(self.game_log) > 20:  # After 20 messages, start summarizing
-                # Create a summary of recent events (excluding RAG calls)
-                recent_events = "\n".join(self.game_log[-10:])  # Last 10 interactions
-                summary = f"Game summary at turn {len(self.game_log)}: {recent_events[:100]}..."
-                self.summary.append(summary)
-                # Trim the game log to keep context manageable
-                self.game_log = self.game_log[:5] + ["...SUMMARY..."] + self.summary[-1:] + self.game_log[-5:]
-        
-        # Add DM message to the game log only
-        message_to_send = f"[DM] {dm_message}"
-        self.game_log.append(message_to_send)
-        
-        # Just return the message, let the server handle broadcasting
-        return dm_message 
+            # 2. Agent output, giving scenario to players and asking for their actions
+            dm_message = ''
+            
+            if self.start:
+                # Initial game setup
+                dm_message = self.chat.start_chat()
+                print(f"[DEBUG] Initial DM message: {dm_message}")  # Debugging log
+                self.start = False
+            else:
+                # Process player actions, include RAG context
+                if rag_context:  # Only add RAG message if there is context
+                    rag_message = f"[RAG] {rag_context}"
+                    self.game_log.append(rag_message)
+                    
+                game_context = '\n'.join(self.game_log)
+                print(f"[DEBUG] Game context: {game_context}")  # Debugging log
+                dm_message = self.chat.send(game_context)
+                print(f"[DEBUG] DM message after processing: {dm_message}")  # Debugging log
+                
+                # 5. Summarize what happened to keep context short
+                if len(self.game_log) > 20:  # After 20 messages, start summarizing
+                    # Create a summary of recent events (excluding RAG calls)
+                    recent_events = "\n".join(self.game_log[-10:])  # Last 10 interactions
+                    summary = f"Game summary at turn {len(self.game_log)}: {recent_events[:100]}..."
+                    self.summary.append(summary)
+                    # Trim the game log to keep context manageable
+                    self.game_log = self.game_log[:5] + ["...SUMMARY..."] + self.summary[-1:] + self.game_log[-5:]
+            
+            # Add DM message to the game log only
+            message_to_send = f"[DM] {dm_message}"
+            self.game_log.append(message_to_send)
+            
+            print(f"[DEBUG] DM response: {dm_message}")
+            return dm_message
+        except Exception as e:
+            print(f"[ERROR] DM turn error: {e}")
+            return "I apologize, but I encountered an error. Please try again."
 
 
 class Player:
     def __init__(self, name, log_callback=None):
         self.name = name
         self.client = PlayerClient(self.name, log_callback=log_callback)
-        self.character_sheet = {
-            "name": name,
-            "race": "Half-Elf",
-            "class": "Ranger",
-            "level": 3,
-            "background": "Outlander",
-            "alignment": "Chaotic Good",
-            "abilities": {
-                "strength": 12,
-                "dexterity": 16, 
-                "constitution": 14,
-                "intelligence": 10,
-                "wisdom": 14,
-                "charisma": 14
-            },
-            "skills": {
-                "nature": True,
-                "survival": True,
-                "stealth": True,
-                "perception": True
-            },
-            "hp": {
-                "max": 27,
-                "current": 27
-            },
-            "armor_class": 15,
-            "equipment": [
-                "Leather Armor",
-                "Longbow",
-                "Two Shortswords",
-                "Explorer's Pack"
-            ]
-        }  # Example character sheet
 
     def connect(self):
         self.client.connect()
@@ -135,6 +109,5 @@ class Player:
         self.client.unjoin()
 
     def take_turn(self, message):
-        # 3. Players give actions, attaching player card to message
-        message_with_character = f"{message}\n\nCHARACTER: {self.character_sheet}"
-        self.client.send_message(message_with_character)
+        # Simply send the message without character sheet
+        self.client.send_message(message)

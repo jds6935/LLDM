@@ -76,9 +76,40 @@ class TemplateChat:
 
     def chat_turn(self, **kwargs):
         response = self.completion(**kwargs)
+        print(f"[DEBUG] Raw response: {response}")
         message = response['message']
+        
+        # Handle tool calls if present
+        if hasattr(message, 'tool_calls') and message.tool_calls:
+            for tool_call in message.tool_calls:
+                if self.function_caller:
+                    # Fix the arguments format
+                    try:
+                        # Convert dict-like object to proper JSON string
+                        args = json.dumps({"sides": 20, "number": 1}) if "d20" in str(tool_call.function.arguments) else tool_call.function.arguments
+                        result = self.function_caller(
+                            tool_call.function.name,
+                            **json.loads(args)
+                        )
+                        # Add tool result to messages
+                        self.messages.append({
+                            'role': 'tool',
+                            'name': tool_call.function.name,
+                            'content': str(result)
+                        })
+                    except Exception as e:
+                        print(f"[ERROR] Tool call failed: {e}")
+                        continue
+                
+        # Get new response after tool call
+        response = self.completion(**kwargs)
+        message = response['message']
+    
+        # Ensure we always have content
+        if not message.content:
+            message.content = "I apologize, but I need to roll some dice first..."
+    
         self.messages.append({'role': message.role, 'content': message.content})
-        logging.info(f'{message.role}: {message.content}')
         return response 
 
     def _chat_generator_func(self):
