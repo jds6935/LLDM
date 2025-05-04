@@ -38,22 +38,25 @@ class DungeonMaster:
         self.start = True
         self.summary = []  # Store summaries of game events
         self.player_stats = {}  # Store player character sheets
+        self.dm_secret_knowledge = ""  # Store RAG context as DM's secret knowledge
 
     def start_server(self):
         self.server.start_server()
 
     def dm_turn_hook(self):
         # 1. Agent makes RAG tool call for additional context
-        rag_context = ""
         if not self.start:
             # Extract important questions from game log to ask RAG
             last_messages = "\n".join(self.game_log[-5:])  # Get last 5 messages
             try:
                 # Ask RAG system about relevant game rules or context
-                rag_context = self.rag.get_context(f"Based on this game context, what DnD rules or information should I know: {last_messages}")
-                print(f"[DEBUG] RAG context: {rag_context}")  # Debugging log
+                self.dm_secret_knowledge = self.rag.get_context(
+                    f"Based on this game context, what DnD rules or information should I know: {last_messages}"
+                )
+                print(f"[DEBUG] RAG context (DM secret knowledge): {self.dm_secret_knowledge}")  # Debugging log
             except Exception as e:
                 print(f"RAG error: {e}")
+                self.dm_secret_knowledge = ""  # Clear secret knowledge on error
         
         # 2. Agent output, giving scenario to players and asking for their actions
         dm_message = ''
@@ -64,8 +67,8 @@ class DungeonMaster:
             print(f"[DEBUG] Initial DM message: {dm_message}")  # Debugging log
             self.start = False
         else:
-            # Process player actions, include RAG context
-            game_context = '\n'.join(self.game_log) + f"\n\nRelevant DnD context: {rag_context}"
+            # Process player actions, exclude RAG context from game log
+            game_context = '\n'.join(self.game_log)
             print(f"[DEBUG] Game context: {game_context}")  # Debugging log
             dm_message = self.chat.send(game_context)
             print(f"[DEBUG] DM message after processing: {dm_message}")  # Debugging log

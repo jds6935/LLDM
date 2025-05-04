@@ -8,7 +8,8 @@ import tempfile  # To save temporary audio files
 import os  # To manage temporary files
 import threading  # To handle recording in a separate thread
 import time  # For simulating button hold duration
-import pyttsx3  # For text-to-speech functionality
+from TTS.api import TTS  # Import Coqui TTS
+from playsound import playsound  # Import playsound for audio playback
 
 # Initialize the main app
 ctk.set_appearance_mode("System")  # Can be "Light", "Dark", or "System"
@@ -19,7 +20,7 @@ class PlayerGUI:
         # Create game feed text area first so we have the update_game_feed method
         self.setup_gui_components()
         # Initialize TTS engine before using it
-        self.tts_engine = pyttsx3.init()
+        self.tts_model = None  # Initialize Coqui TTS model
         self.initialize_tts()  # Configure TTS engine
         # Initialize Player with our log callback
         self.player = Player(player_name, log_callback=self.process_message)
@@ -225,17 +226,26 @@ class PlayerGUI:
 
     # Initialize TTS engine
     def initialize_tts(self):
-        # Optional: customize voice settings
-        self.tts_engine.setProperty('rate', 150)  # Speed of speech
-        voices = self.tts_engine.getProperty('voices')
-        # Choose a voice - typically voice[0] is male, voice[1] is female
-        self.tts_engine.setProperty('voice', voices[0].id)
-        # No need to return anything as we're modifying self.tts_engine directly
+        try:
+            self.log_system_message("[System] Loading Coqui TTS model...")
+            self.tts_model = TTS(model_name="tts_models/en/vctk/vits")  # Load Coqui TTS model
+            self.log_system_message("[System] Coqui TTS model loaded successfully!")
+        except Exception as e:
+            self.log_syste/m_message(f"[Error] Failed to load Coqui TTS model: {str(e)}")
+            self.tts_model = None
 
     # Text-to-Speech function
     def speak(self, text):
-        self.tts_engine.say(text)
-        self.tts_engine.runAndWait()
+        if self.tts_model:
+            try:
+                temp_audio_path = "temp_output.wav"  # Temporary file for audio output
+                self.tts_model.tts_to_file(text=text, file_path=temp_audio_path)
+                playsound(temp_audio_path)  # Play the audio file in the background
+                os.remove(temp_audio_path)  # Clean up the temporary file after playback
+            except Exception as e:
+                self.log_system_message(f"[Error] Failed to generate speech: {str(e)}")
+        else:
+            self.log_system_message("[Error] TTS model is not initialized.")
 
 def main():
     app = PlayerGUI()
