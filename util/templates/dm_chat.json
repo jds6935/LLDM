@@ -37,7 +37,7 @@
     },
     {
       "role": "user",
-      "content": "I want to search for hidden dangers."
+      "content": "I want to search for hidden dangers.\n[RAG] The temple is known for its intricate traps and hidden mechanisms, designed to deter intruders. Many adventurers have fallen victim to these traps, which range from pressure plates to concealed dart launchers."
     },
     {
       "role": "assistant",

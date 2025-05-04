@@ -16,8 +16,8 @@ class DungeonMaster:
             chunk_size=750,            # Number of characters per chunk
             chunk_overlap=250,          # Overlapping characters between chunks
             embedding_model="nomic-embed-text",  # Embedding model for vector storage
-            #llm_model="llama3.2:latest", # Language model for response generation
-            instruction="You are an assistant that gives me very straight forward answers on DnD",  # LLM prompt style
+            llm_model="llama3.2:latest", # Language model for response generation
+            instruction="Based on the input give me any information that the DM should know to make better and more accurate story telling.",  # LLM prompt style
             collection_name="my_rag_collection",  # ChromaDB collection name
             persistent=True,            # Whether to persist ChromaDB storage
             db_path="./chroma_db",      # Path for persistent storage
@@ -52,7 +52,7 @@ class DungeonMaster:
                 last_messages = "\n".join(self.game_log[-5:])  # Get last 5 messages
                 try:
                     # Ask RAG system about relevant game rules or context
-                    rag_context = self.rag.get_context(f"Based on this game context, what DnD rules or information should I know: {last_messages}")
+                    rag_context = self.rag.run_query(f"Based on this game context, what DnD rules or information should I know: {last_messages}")
                     print(f"[DEBUG] RAG context: {rag_context}")  # Debugging log
                 except Exception as e:
                     print(f"RAG error: {e}")
