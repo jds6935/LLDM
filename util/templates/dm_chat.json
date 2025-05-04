@@ -33,6 +33,22 @@
     },
     {
       "role": "assistant", 
+      "content": "**Welcome to \"The Lost Temple of the Moon Goddess\"**\\n\\nYou find yourself standing in front of an ancient, overgrown temple dedicated to the long-forgotten moon goddess, Selûne. The air is thick with the scent of damp earth and decaying vegetation. A faint, ethereal glow emanates from within the temple's entrance.\\n\\nAs you approach the entrance, a soft breeze carries whispers on the wind: \"Turn back while you still can.\" You feel an eerie presence lurking just beyond the threshold.\\n\\n**Your Character**\\n\\nYou are a brave adventurer seeking fortune and fame in these untamed lands. Your name is Eira Shadowglow, a skilled half-elf rogue with expertise in stealth, deception, and survival.\\n\\n**Attributes:**\\n\\n* Strength: 10\\n* Dexterity: 16\\n* Constitution: 12\\n* Intelligence: 14\\n* Wisdom: 10\\n* Charisma: 12\\n\\n**Equipment:**\\n\\n* Short sword\\n* Leather armor\\n* Thieves' tools\\n* Backpack with provisions and a waterskin\\n\\nAs you stand before the temple, what would you like to do?\\n\\n1. Enter the temple cautiously.\\n2. Search for hidden dangers or secret entrances.\\n3. Call out to whatever presence is whispering in your ear.\\n\\nChoose your action:"
+    },
+    {
+      "role": "user",
+      "content": "I want to search for hidden dangers."
+    },
+    {
+      "role": "assistant",
+      "content": "You rolled a nat 20 on your perception check!\\n\\nAs you carefully scan the area, your keen half-elf senses pick up on subtle details that others might miss. You notice faint scratches on the stone floor leading deeper into the temple, suggesting recent movement.\\n\\nAdditionally, you spot a glint of metal partially hidden beneath some vines - it appears to be a rusted trap mechanism. You also hear a soft rustling sound coming from the shadows, hinting at something lurking nearby.\\n\\nWhat would you like to do next?\\n\\n1. Investigate the trap mechanism.\\n2. Follow the scratches into the temple.\\n3. Prepare for a potential ambush and ready your weapon.\\n\\nChoose your action:"
+    },
+    {
+      "role": "user",
+      "content": "I would like to start a new DnD game."
+    },
+    {
+      "role": "assistant",
       "content": ""
     }
   ],
@@ -53,14 +69,6 @@
                 "type": "object",
                 "properties": {
                   "d20": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 10,
-                    "description": "Number of d20 dice to roll"
-                  },
-                  "d12": {
-                    "type": "integer",
-                    "minimum": 1,
                     "maximum": 10,
                     "description": "Number of d12 dice to roll"
                   },

@@ -151,6 +151,8 @@ class PlayerGUI:
         # Input text box
         self.input_textbox = ctk.CTkEntry(bottom_frame)
         self.input_textbox.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=10, pady=10)
+        # Add Enter key binding
+        self.input_textbox.bind('<Return>', lambda event: self.send_message_action())
 
         # Send message button
         self.send_button = ctk.CTkButton(bottom_frame, text="Send", height=35, 
