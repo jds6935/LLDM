@@ -8,7 +8,7 @@ import tempfile  # To save temporary audio files
 import os  # To manage temporary files
 import threading  # To handle recording in a separate thread
 import time  # For simulating button hold duration
-from TTS.api import TTS  # Import Coqui TTS
+import pyttsx3  # Replace: from TTS.api import TTS
 import simpleaudio as sa  # Import simpleaudio for audio playback
 
 # Initialize the main app
@@ -20,8 +20,8 @@ class PlayerGUI:
         # Create game feed text area first so we have the update_game_feed method
         self.setup_gui_components()
         # Initialize TTS engine before using it
-        self.tts_model = None  # Initialize Coqui TTS model
-        self.initialize_tts()  # Configure TTS engine
+        self.tts_engine = None  # Replace: self.tts_model = None
+        self.initialize_tts()
         # Initialize Player with our log callback
         self.player = Player(player_name, log_callback=self.process_message)
         self.recording = False
@@ -231,42 +231,35 @@ class PlayerGUI:
 
     # Initialize TTS engine
     def initialize_tts(self):
+        """Initialize the pyttsx3 TTS engine"""
         try:
-            self.log_system_message("[System] Loading Coqui TTS model...")
-            self.tts_model = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC")  # Load Coqui TTS model
-            self.log_system_message("[System] Coqui TTS model loaded successfully!")
+            self.log_system_message("[System] Initializing TTS engine...")
+            self.tts_engine = pyttsx3.init()
+            # Configure the engine
+            self.tts_engine.setProperty('rate', 150)    # Speaking rate
+            self.tts_engine.setProperty('volume', 0.9)  # Volume (0-1)
+            self.log_system_message("[System] TTS engine initialized successfully!")
         except Exception as e:
-            self.log_system_message(f"[Error] Failed to load Coqui TTS model: {str(e)}")
-            self.tts_model = None
+            self.log_system_message(f"[Error] Failed to initialize TTS engine: {str(e)}")
+            self.tts_engine = None
 
     # Text-to-Speech function
     def speak(self, text):
-        if self.tts_model:
+        """Speak text using pyttsx3"""
+        if self.tts_engine:
             try:
-                # Sanitize input text to remove unsupported characters
-                sanitized_text = ''.join(c for c in text if c.isalnum() or c.isspace() or c in '.,!?')
-
-                # Split text into smaller chunks (e.g., sentences or fixed length)
-                chunks = sanitized_text.split('.')  # Split by sentences (or use a fixed length split)
-
-                for chunk in chunks:
-                    chunk = chunk.strip()
-                    if not chunk:
-                        continue
-
-                    temp_audio_path = "temp_output_chunk.wav"  # Temporary file for each chunk
-                    self.tts_model.tts_to_file(text=chunk, file_path=temp_audio_path)
-
-                    wave_obj = sa.WaveObject.from_wave_file(temp_audio_path)  # Load the audio file
-                    play_obj = wave_obj.play()  # Play the audio
-                    play_obj.wait_done()  # Wait for playback to finish
-
-                    os.remove(temp_audio_path)  # Clean up the temporary file after playback
-
+                # Remove special characters and format markers
+                clean_text = ' '.join(text.split(']')[1:]) if ']' in text else text
+                clean_text = ''.join(c for c in clean_text if c.isalnum() or c.isspace() or c in '.,!?')
+                
+                if clean_text.strip():
+                    # Speak in a non-blocking way
+                    self.tts_engine.say(clean_text)
+                    self.tts_engine.runAndWait()
             except Exception as e:
                 self.log_system_message(f"[Error] Failed to generate speech: {str(e)}")
         else:
-            self.log_system_message("[Error] TTS model is not initialized.")
+            self.log_system_message("[Error] TTS engine is not initialized.")
 
 def main():
     app = PlayerGUI()
