@@ -9,7 +9,7 @@ import os  # To manage temporary files
 import threading  # To handle recording in a separate thread
 import time  # For simulating button hold duration
 from TTS.api import TTS  # Import Coqui TTS
-from playsound import playsound  # Import playsound for audio playback
+import simpleaudio as sa  # Import simpleaudio for audio playback
 
 # Initialize the main app
 ctk.set_appearance_mode("System")  # Can be "Light", "Dark", or "System"
@@ -152,8 +152,6 @@ class PlayerGUI:
         # Input text box
         self.input_textbox = ctk.CTkEntry(bottom_frame)
         self.input_textbox.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=10, pady=10)
-        # Add Enter key binding
-        self.input_textbox.bind('<Return>', lambda event: self.send_message_action())
 
         # Send message button
         self.send_button = ctk.CTkButton(bottom_frame, text="Send", height=35, 
@@ -189,7 +187,7 @@ class PlayerGUI:
             if self.whisper_model is None:
                 self.log_system_message("[System] Loading Whisper model...")
                 self.whisper_model = whisper.load_model("base")
-                
+
             while self.recording:
                 # Record audio
                 duration = 5  # seconds
@@ -197,22 +195,27 @@ class PlayerGUI:
                 self.log_system_message("[System] Recording audio...")
                 recording = sd.rec(int(duration * fs), samplerate=fs, channels=1)
                 sd.wait()  # Wait until recording is finished
-                
+
+                # Check if recording is empty
+                if recording.size == 0 or not np.any(recording):
+                    self.log_system_message("[System] No audio detected. Skipping transcription.")
+                    continue
+
                 # Convert to format expected by Whisper
                 audio_data = recording.flatten().astype(np.float32)
-                
+
                 # Transcribe
                 self.log_system_message("[System] Transcribing audio...")
                 result = self.whisper_model.transcribe(audio_data)
                 transcribed_text = result["text"].strip()
-                
+
                 if transcribed_text:
                     # Insert the transcribed text into the input textbox
                     self.input_textbox.insert('end', transcribed_text)
                     self.log_system_message(f"[System] Transcribed: {transcribed_text}")
                 else:
                     self.log_system_message("[System] No speech detected")
-                
+
         except Exception as e:
             self.log_system_message(f"[Error] Recording failed: {str(e)}")
             self.recording = False
@@ -230,20 +233,36 @@ class PlayerGUI:
     def initialize_tts(self):
         try:
             self.log_system_message("[System] Loading Coqui TTS model...")
-            self.tts_model = TTS(model_name="tts_models/en/vctk/vits")  # Load Coqui TTS model
+            self.tts_model = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC")  # Load Coqui TTS model
             self.log_system_message("[System] Coqui TTS model loaded successfully!")
         except Exception as e:
-            self.log_syste/m_message(f"[Error] Failed to load Coqui TTS model: {str(e)}")
+            self.log_system_message(f"[Error] Failed to load Coqui TTS model: {str(e)}")
             self.tts_model = None
 
     # Text-to-Speech function
     def speak(self, text):
         if self.tts_model:
             try:
-                temp_audio_path = "temp_output.wav"  # Temporary file for audio output
-                self.tts_model.tts_to_file(text=text, file_path=temp_audio_path)
-                playsound(temp_audio_path)  # Play the audio file in the background
-                os.remove(temp_audio_path)  # Clean up the temporary file after playback
+                # Sanitize input text to remove unsupported characters
+                sanitized_text = ''.join(c for c in text if c.isalnum() or c.isspace() or c in '.,!?')
+
+                # Split text into smaller chunks (e.g., sentences or fixed length)
+                chunks = sanitized_text.split('.')  # Split by sentences (or use a fixed length split)
+
+                for chunk in chunks:
+                    chunk = chunk.strip()
+                    if not chunk:
+                        continue
+
+                    temp_audio_path = "temp_output_chunk.wav"  # Temporary file for each chunk
+                    self.tts_model.tts_to_file(text=chunk, file_path=temp_audio_path)
+
+                    wave_obj = sa.WaveObject.from_wave_file(temp_audio_path)  # Load the audio file
+                    play_obj = wave_obj.play()  # Play the audio
+                    play_obj.wait_done()  # Wait for playback to finish
+
+                    os.remove(temp_audio_path)  # Clean up the temporary file after playback
+
             except Exception as e:
                 self.log_system_message(f"[Error] Failed to generate speech: {str(e)}")
         else:
