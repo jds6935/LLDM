@@ -16,24 +16,32 @@ ctk.set_appearance_mode("System")  # Can be "Light", "Dark", or "System"
 ctk.set_default_color_theme("blue")
 
 class PlayerGUI:
-    def __init__(self, player_name="Player1"):
+    def __init__(self):
         # Create game feed text area first so we have the update_game_feed method
         self.setup_gui_components()
         # Initialize TTS engine before using it
-        self.tts_engine = None  # Replace: self.tts_model = None
+        self.tts_engine = None
         self.initialize_tts()
-        # Initialize Player with our log callback
-        self.player = Player(player_name, log_callback=self.process_message)
+        # Don't create player instance yet
+        self.player = None
         self.recording = False
         self.connected = False
         self.whisper_model = None  # Will store the whisper model here
 
     def connect_action(self):
         try:
+            player_name = self.name_entry.get().strip()
+            if not player_name:
+                self.log_system_message("[Error] Please enter a player name")
+                return
+                
+            # Create player instance with entered name
+            self.player = Player(player_name, log_callback=self.process_message)
             self.player.connect()
             self.connected = True
             self.log_system_message("[System] Connected to server successfully!")
             self.connect_button.configure(text="Disconnect", command=self.disconnect_action)
+            self.name_entry.configure(state="disabled")  # Disable name changes while connected
             self.enable_controls()
         except ConnectionRefusedError:
             self.log_system_message("[Error] Could not connect to server. Is it running?")
@@ -42,11 +50,14 @@ class PlayerGUI:
 
     def disconnect_action(self):
         try:
-            self.player.unjoin()
+            if self.player:
+                self.player.unjoin()
         except:
             pass
         self.connected = False
+        self.player = None
         self.connect_button.configure(text="Connect", command=self.connect_action)
+        self.name_entry.configure(state="normal")  # Re-enable name changes
         self.disable_controls()
         self.log_system_message("[System] Disconnected from server")
 
@@ -110,7 +121,7 @@ class PlayerGUI:
     def setup_gui_components(self):
         self.root = ctk.CTk()
         self.root.title("D&D Player Client")
-        self.root.geometry("600x400")
+        self.root.geometry("1000x800")
         self.root.minsize(600, 400)
         
         self.root.grid_rowconfigure(0, weight=1)
@@ -121,7 +132,7 @@ class PlayerGUI:
         top_frame = ctk.CTkFrame(self.root)
         top_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         
-        top_frame.grid_columnconfigure(0, weight=7)
+        top_frame.grid_columnconfigure(0, weight=4)
         top_frame.grid_columnconfigure(1, weight=1)
         top_frame.grid_rowconfigure(0, weight=1)
         top_frame.grid_rowconfigure(1, weight=1)
@@ -134,6 +145,11 @@ class PlayerGUI:
         self.text2speech = ctk.BooleanVar()
         self.tts_toggle = ctk.CTkSwitch(top_frame, text="Text to Speech", variable=self.text2speech)
         self.tts_toggle.grid(row=1, column=1, sticky="ne", padx=10, pady=10)
+
+        # Player name entry
+        self.name_entry = ctk.CTkEntry(top_frame, placeholder_text="Enter player name", width=120)
+        self.name_entry.insert(0, "Player1")  # Default name
+        self.name_entry.grid(row=0, column=1, sticky="nw", padx=10, pady=10)
 
         # Connection button
         self.connect_button = ctk.CTkButton(top_frame, text="Connect", 
@@ -152,6 +168,8 @@ class PlayerGUI:
         # Input text box
         self.input_textbox = ctk.CTkEntry(bottom_frame)
         self.input_textbox.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=10, pady=10)
+        # Add Enter key binding
+        self.input_textbox.bind('<Return>', lambda event: self.send_message_action())
 
         # Send message button
         self.send_button = ctk.CTkButton(bottom_frame, text="Send", height=35, 
@@ -262,7 +280,7 @@ class PlayerGUI:
             self.log_system_message("[Error] TTS engine is not initialized.")
 
 def main():
-    app = PlayerGUI()
+    app = PlayerGUI()  # Remove the default player name parameter
     app.start()
 
 if __name__ == "__main__": 
